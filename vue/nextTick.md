@@ -128,6 +128,8 @@ vue提供了两种调用nextTick的方式，一个是全局api的[Vue.nextTick](
 
 ### JavaScript和eventloop事件循环机制
 
+想要弄清楚nextTick的原理，必须弄清楚eventloop中task执行方式、微任务、宏任务及其关系。
+
 JS 执行是单线程的，它是基于事件循环的。事件循环大致分为以下几个步骤：
 
 （1）所有同步任务都在主线程上执行，形成一个执行栈（execution context stack）。
@@ -252,3 +254,5 @@ nextTick.vue?5972:20 nexttick with promise 1  msg1576854689482
 [nextTick](<https://ustbhuangyi.github.io/vue-analysis/v2/reactive/next-tick.html#js-%E8%BF%90%E8%A1%8C%E6%9C%BA%E5%88%B6>)
 
 [异步更新队列](<https://cn.vuejs.org/v2/guide/reactivity.html#%E5%BC%82%E6%AD%A5%E6%9B%B4%E6%96%B0%E9%98%9F%E5%88%97>)
+
+[javascript.info/event-loop](<https://javascript.info/event-loop>)
