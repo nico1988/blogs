@@ -43,7 +43,6 @@ http.createServer(function (req, res) {
 3、使用iframe或者a标签
 
 
-
 ```javascript
 
 ```
