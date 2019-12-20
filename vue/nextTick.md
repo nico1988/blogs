@@ -2,6 +2,8 @@
 
 nextTick采用异步调用的方式触发回调函数，Vue 在内部对异步队列尝试使用原生的 `Promise.then`、`MutationObserver` 和 `setImmediate`，如果执行环境不支持，则会采用 `setTimeout(fn, 0)` 代替。
 
+[next-tick.js](<https://github.com/nico1988/vue-analyse/blob/9dde084ada02b8a6f4603f2fdf4ae4a7c580723b/src/core/util/next-tick.js>)
+
 ```
 import { noop } from 'shared/util'
 import { handleError } from './error'
