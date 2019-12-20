@@ -197,7 +197,53 @@ JS 执行是单线程的，它是基于事件循环的。事件循环大致分�
 
 ![1576851810182](assets/1576851810182.png)
 
+### 虽然有点无聊，同时执行多次this.$nextTick,且其中既有宏任务又有微任务会发生啥
 
+```
+change() {
+    this.msg = "msg" + Date.now();
+    	console.log("sync", this.$refs.msg.innerText)
+    this.$nextTick().then(()=>{
+    	console.log("nexttick with promise 1 ",this.$refs.msg.innerText)
+    })
+    this.$nextTick(()=>{ // 这里为啥是callback先执行？
+    	console.log("nexttick with callback 2 ",this.$refs.msg.innerText)
+    })
+    this.$nextTick(()=>{ // 这里为啥是callback先执行？
+    	console.log("nexttick with callback 3 ",this.$refs.msg.innerText)
+    })
+    this.$nextTick(()=>{ // 这里为啥是callback先执行？
+    	console.log("nexttick with callback 4 ",this.$refs.msg.innerText)
+    })
+    this.$nextTick(()=>{ // 这里为啥是callback先执行？
+    	console.log("nexttick with callback 5 ",this.$refs.msg.innerText)
+    })
+    this.$nextTick(()=>{ // 这里为啥是callback先执行？
+    	console.log("nexttick with callback 6 ",this.$refs.msg.innerText)
+    })
+    this.$nextTick(()=>{ // 这里为啥是callback先执行？
+        setTimeout(function(){
+        	console.log("nexttick with callback 7 ",this.$refs.msg.innerText)
+        }.bind(this),0)
+    })
+}
+```
+
+执行结果
+
+```
+nexttick with callback 2  msg1576854689482
+nextTick.vue?5972:26 nexttick with callback 3  msg1576854689482
+nextTick.vue?5972:29 nexttick with callback 4  msg1576854689482
+nextTick.vue?5972:32 nexttick with callback 5  msg1576854689482
+nextTick.vue?5972:35 nexttick with callback 6  msg1576854689482
+nextTick.vue?5972:38 nexttick with callback 7  msg1576854689482
+nextTick.vue?5972:20 nexttick with promise 1  msg1576854689482
+```
+
+为什么是callback先执行，并且有顺序，promise后执行？
+
+![1576855076212](assets/1576855076212.png)
 
 ### 参考
 
