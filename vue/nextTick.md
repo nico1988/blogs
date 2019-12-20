@@ -130,6 +130,8 @@ vue提供了两种调用nextTick的方式，一个是全局api的[Vue.nextTick](
 
 想要弄清楚nextTick的原理，必须弄清楚eventloop中task执行方式、微任务、宏任务及其关系。
 
+![1576855820544](assets/1576855820544.png)
+
 JS 执行是单线程的，它是基于事件循环的。事件循环大致分为以下几个步骤：
 
 （1）所有同步任务都在主线程上执行，形成一个执行栈（execution context stack）。
