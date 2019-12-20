@@ -17,10 +17,27 @@
     window.URL.revokeObjectURL(url);
 
 ```
+
 2、后台返回文件的时候设置文件http头Content-Disposition
 
 ```nodejs
-
+// nodejs
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
+http.createServer(function (req, res) { 
+    let filename = encodeURIComponent('微信多开的步骤.doc');
+    // 下面两个主要在跨域情况下，需要设置的
+     res.setHeader('Access-Control-Allow-Origin', '*');
+     res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
+    
+    // 设置响应头
+    res.setHeader('Content-Type', 'application/zip;charset=UTF-8');
+    res.setHeader('Content-Disposition', `attachment; filename=${filename}`);
+    let fs.readFile(path.resolve(__dirname, `./微信多开的步骤.doc`), function (err, data) {
+      if (err) throw err;
+      res.end(data);});
+}).listen(3000);
 ```
 
 3、使用iframe或者a标签
