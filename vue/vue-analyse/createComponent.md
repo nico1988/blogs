@@ -1,6 +1,104 @@
 ### createComponent
 
+Vue.js 另一个核心思想是组件化。所谓组件化，就是把页面拆分成多个组件 (component)，每个组件依赖的 CSS、JavaScript、模板、图片等资源放在一起开发和维护。组件是资源独立的，组件在系统内部可复用，组件和组件之间可以嵌套。
 
+我们在用 Vue.js 开发实际项目的时候，就是像搭积木一样，编写一堆组件拼装生成页面。在 Vue.js 的官网中，也是花了大篇幅来介绍什么是组件，如何编写组件以及组件拥有的属性和特性。
+
+下面分析一下组件生成的步骤
+
+首先，还是看一个我们项目的工程入口文件
+
+```
+import Vue from '../../../../dist/vue.esm'  // runtim-compiler
+// import Vue from '../../../../dist/vue.runtime.esm'  // runtim-only
+import router from './router'
+import App from './App.vue'
+
+Vue.config.productionTip = false
+
+var app = new Vue({
+  render: h => h(App),
+  router
+}).$mount('#app') // 显示调用$mount 如果不显示调用 要在option中指定el
+```
+
+可以看出，在new Vue的时候，通过手动指定的方式，options中的render传递的就是一个函数，返回的是一个函数调用，参数是App,这个参数就是createElement，why?
+
+大致逻辑
+
+- new Vue --> Vue.prototype.init -- Vue.$mount -- mountComponent -- Watcher.get -- updateComponent - Vue.render也就是下面的代码
+- 然后通过解构赋值拿到当前实例(第一次渲染)的 render `const { render, _parentVnode } = vm.$options`
+- `vnode = render.call(vm._renderProxy, vm.$createElement)`,这里通过指定执行上下文为vm._renderProxy,传入的参数就是vm.$createElement
+
+[core/instance/render.js](<https://github.com/nico1988/vue-analyse/blob/e4fd2b76179f3892b36f3f0d5764ff3f7d773b0a/src/core/instance/render.js#L79>)
+
+```
+  Vue.prototype._render = function (): VNode {
+    const vm: Component = this
+    const { render, _parentVnode } = vm.$options
+
+    if (_parentVnode) {
+      vm.$scopedSlots = normalizeScopedSlots(
+        _parentVnode.data.scopedSlots,
+        vm.$slots,
+        vm.$scopedSlots
+      )
+    }
+
+    // set parent vnode. this allows render functions to have access
+    // to the data on the placeholder node.
+    vm.$vnode = _parentVnode // 占位符 父vnode
+    // render self
+    let vnode
+    try {
+      // There's no need to maintain a stack because all render fns are called
+      // separately from one another. Nested component's render fns are called
+      // when parent component is patched.
+      currentRenderingInstance = vm
+      vnode = render.call(vm._renderProxy, vm.$createElement) // vm._renderProxy（inint.js:49/53）开发环境是proxy对象  生产环境就是vm本身
+    } catch (e) {
+      handleError(e, vm, `render`)
+      // return error render result,
+      // or previous vnode to prevent render error causing blank component
+      /* istanbul ignore else */
+      if (process.env.NODE_ENV !== 'production' && vm.$options.renderError) {
+        try {
+          vnode = vm.$options.renderError.call(vm._renderProxy, vm.$createElement, e)
+        } catch (e) {
+          handleError(e, vm, `renderError`)
+          vnode = vm._vnode
+        }
+      } else {
+        vnode = vm._vnode
+      }
+    } finally {
+      currentRenderingInstance = null
+    }
+    // if the returned array contains only a single node, allow it
+    if (Array.isArray(vnode) && vnode.length === 1) {
+      vnode = vnode[0]
+    }
+    // return empty vnode in case the render function errored out
+    if (!(vnode instanceof VNode)) {
+      // 如果有多个根节点 根节点只有一个vnode
+      if (process.env.NODE_ENV !== 'production' && Array.isArray(vnode)) {
+        warn(
+          'Multiple root nodes returned from render function. Render function ' +
+          'should return a single root node.',
+          vm
+        )
+      }
+      vnode = createEmptyVNode()
+    }
+    // set parent
+    vnode.parent = _parentVnode  // 渲染vnode
+    return vnode // vnode就是virtual dom的概念
+  }
+
+```
+- vm.$createElement的函数定义也在render.js中 `vm.$createElement = (a, b, c, d) => createElement(vm, a, b, c, d, true)`
+
+- 其实，不管是手写render还是Vue生成的render函数，_createElement最终都是调用createComponent创建了一个vnode
 
 #### createElement
 
@@ -38,19 +136,122 @@ if (typeof tag === 'string') {
 }
 ```
 
-#### debug调试
+[core\vdom\create-element.js](<https://github.com/nico1988/vue-analyse/blob/e4fd2b76179f3892b36f3f0d5764ff3f7d773b0a/src/core/vdom/create-element.js>)
+
+```
+export function _createElement (
+  context: Component,
+  tag?: string | Class<Component> | Function | Object,
+  data?: VNodeData,
+  children?: any,
+  normalizationType?: number
+): VNode | Array<VNode> {
+  if (isDef(data) && isDef((data: any).__ob__)) { // 不允许vnodedata是响应式的
+    process.env.NODE_ENV !== 'production' && warn(
+      `Avoid using observed data object as vnode data: ${JSON.stringify(data)}\n` +
+      'Always create fresh vnode data objects in each render!',
+      context
+    )
+    return createEmptyVNode() // 创建一个空的vnode 理解为注释vnode
+  }
+  // object syntax in v-bind
+  if (isDef(data) && isDef(data.is)) {
+    tag = data.is
+  }
+  if (!tag) {
+    // in case of component :is set to falsy value
+    return createEmptyVNode() // 创建一个空的vnode 理解为注释vnode
+  }
+  // warn against non-primitive key
+  if (process.env.NODE_ENV !== 'production' &&
+    isDef(data) && isDef(data.key) && !isPrimitive(data.key)
+  ) {
+    if (!__WEEX__ || !('@binding' in data.key)) {
+      warn(
+        'Avoid using non-primitive value as key, ' +
+        'use string/number value instead.',
+        context
+      )
+    }
+  }
+  // support single function children as default scoped slot
+  if (Array.isArray(children) &&
+    typeof children[0] === 'function'
+  ) {
+    data = data || {}
+    data.scopedSlots = { default: children[0] }
+    children.length = 0
+  }
+  // !!! 比较重要  对children做normalize why？ 处理成一维数组 方便后期处理
+  if (normalizationType === ALWAYS_NORMALIZE) {
+    children = normalizeChildren(children)
+  } else if (normalizationType === SIMPLE_NORMALIZE) {
+    children = simpleNormalizeChildren(children)
+  }
+  let vnode, ns
+  if (typeof tag === 'string') {
+    let Ctor
+    ns = (context.$vnode && context.$vnode.ns) || config.getTagNamespace(tag)
+    /**
+     * tag 判断  string  原生标签  组件 其他
+     */
+    if (config.isReservedTag(tag)) { // 是否是html保留标签
+      // platform built-in elements
+      if (process.env.NODE_ENV !== 'production' && isDef(data) && isDef(data.nativeOn)) {
+        warn(
+          `The .native modifier for v-on is only valid on components but it was used on <${tag}>.`,
+          context
+        )
+      }
+      vnode = new VNode(
+        config.parsePlatformTagName(tag), data, children,
+        undefined, undefined, context
+      )
+    } else if ((!data || !data.pre) && isDef(Ctor = resolveAsset(context.$options, 'components', tag))) {
+      // component
+      // 传递的是组件对象
+      vnode = createComponent(Ctor, data, context, children, tag)
+    } else {
+      // unknown or unlisted namespaced elements  其他不认识的
+      // check at runtime because it may get assigned a namespace when its
+      // parent normalizes children
+      vnode = new VNode(
+        tag, data, children,
+        undefined, undefined, context
+      )
+    }
+  } else {
+    // direct component options / constructor
+    vnode = createComponent(tag, data, context, children)
+  }
+  if (Array.isArray(vnode)) {
+    return vnode
+  } else if (isDef(vnode)) { // v !== undefined && v !== null
+    if (isDef(ns)) applyNS(vnode, ns)
+    if (isDef(data)) registerDeepBindings(data)
+    return vnode
+  } else {
+    return createEmptyVNode()
+  }
+}
+
+```
+
+- 终于进入正题了，请看下面的调用栈关系
 
 ##### 两个维度查看调用栈
 
 ![1576977022862](assets/1576977022862.png)
 
-![1576977061832](assets/1576977061832.png)
-
-
+![1576977061832](C:/Program Files/Typora)
 
 ##### createComponent入栈
 
 ![1576976093535](assets/1576976093535.png)
+
+
+
+
 
 查看Ctor，第一次其实就是我们在main.js中引入的App
 
